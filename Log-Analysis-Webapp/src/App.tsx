@@ -32,6 +32,7 @@ const CHART_COLORS = {
 // MOCK DATA GENERATION
 // ─────────────────────────────────────────────────────────────
 
+//ONLY FOR DEMO PURPOSES, generate a set of mock log events with realistic timestamps, levels, and messages. This is used when no log file is uploaded to the app.
 function generateMockEvents() {
   const now = Date.now();
   const loggers = [
@@ -97,15 +98,10 @@ function generateMockEvents() {
 // ANTHROPIC API
 // ─────────────────────────────────────────────────────────────
 
+// Placeholder until the AI backend is wired up. Callers already try/catch.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function callClaude(messages, system) {
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 1000, system, messages }),
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error?.message ?? "API error");
-  return data.content[0].text;
+  throw new Error("AI analysis is not available yet (backend not connected).");
 }
 
 function buildSystemContext(events) {
