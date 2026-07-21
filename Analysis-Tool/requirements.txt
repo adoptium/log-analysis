@@ -1,6 +1,5 @@
-fastapi
-uvicorn[standard]
-python-multipart
-drain3
-duckdb
-pytz
+# Runtime dependencies for log-analysis Analysis-Tool
+
+drain3==0.9.11
+jsonpickle==1.5.1
+cachetools==4.2.1
