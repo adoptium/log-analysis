@@ -3,3 +3,8 @@
 drain3==0.9.11
 jsonpickle==1.5.1
 cachetools==4.2.1
+fastapi
+uvicorn[standard]
+python-multipart
+duckdb
+pytz
