@@ -1,4 +1,3 @@
-
 # Eclipse-Log-Analysis
 
 ## Project description
