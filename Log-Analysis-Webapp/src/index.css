@@ -67,3 +67,19 @@ body {
   .ll-rules-body { grid-template-columns: 1fr; min-height: 0; }
   .ll-rules-body > div:first-child { border-right: none !important; }
 }
+
+/* Investigate: filter rail · event feed · side stats. minmax(0, …) lets
+   the feed column shrink so long messages ellipsis instead of scrolling. */
+.ll-investigate-body {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr) 300px;
+  min-height: 640px;
+}
+@media (max-width: 1100px) {
+  .ll-investigate-body { grid-template-columns: minmax(0, 1fr); min-height: 0; }
+  .ll-investigate-body > div { border-right: none !important; }
+}
+
+/* Volume-chart bars brighten on hover regardless of selection dimming. */
+.ll-bar { transition: opacity 0.1s ease; }
+.ll-bar:hover { opacity: 1 !important; }

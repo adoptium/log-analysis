@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import Layout from "./components/Layout";
 import Dashboard from "./pages/Dashboard";
 import Rules from "./pages/Rules";
+import Investigate from "./pages/Investigate";
 import Placeholder from "./pages/Placeholder";
 import { AnalysisProvider } from "./state/analysis";
 
@@ -9,7 +10,7 @@ import { AnalysisProvider } from "./state/analysis";
 // Lightweight hash router (no dependency). Routes:
 //   #/dashboard   → Log overview   (this app)
 //   #/rules       → Rules          (this app)
-//   #/investigate → placeholder    (owned by a teammate)
+//   #/investigate → Investigate    (this app)
 //   #/query       → placeholder    (deferred)
 // ─────────────────────────────────────────────────────────────
 
@@ -33,7 +34,7 @@ export default function App() {
       page = <Rules />;
       break;
     case "investigate":
-      page = <Placeholder title="Investigate" note="Soon!" />;
+      page = <Investigate />;
       break;
     case "query":
       page = <Placeholder title="Query" note="Coming soon!" />;
