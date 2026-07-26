@@ -7,3 +7,5 @@ duckdb_output/
 *.bin
 __pycache__/
 *.pyc
+.bob/
+.venv/
