@@ -4,15 +4,6 @@ import { useAnalysis, shortTime } from "../state/analysis";
 import { fetchTopTemplates } from "../api";
 import type { AnalysisResult, TopTemplate } from "../types";
 
-// ─────────────────────────────────────────────────────────────
-// Log overview (Dashboard). Ported from Dashboard.dc.html and wired
-// to the backend: severity counts, the fatal/error feed and the
-// "Events by level" chart all come from the /analyze result, and the
-// export modal pulls real templates from /top-templates.
-//
-// Until a log is loaded the page shows the sample data below so the
-// layout stays populated (flagged "SAMPLE DATA" in the header strip).
-// ─────────────────────────────────────────────────────────────
 
 // The four levels the design charts, in display order.
 const DISPLAY_LEVELS = ["SEVERE", "ERROR", "WARNING", "INFO"] as const;

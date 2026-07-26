@@ -49,10 +49,12 @@ body {
 
 .ll-dash-body {
   display: grid;
-  grid-template-columns: 1fr 420px;
+  /* minmax(0, …) lets the feed column shrink so long messages ellipsis
+     instead of blowing out the grid and forcing a horizontal scroll. */
+  grid-template-columns: minmax(0, 1fr) 420px;
 }
 @media (max-width: 1100px) {
-  .ll-dash-body { grid-template-columns: 1fr; }
+  .ll-dash-body { grid-template-columns: minmax(0, 1fr); }
   .ll-dash-body > div:first-child { border-right: none !important; }
 }
 

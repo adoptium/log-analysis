@@ -1,7 +1,7 @@
-import { useRef } from "react";
 import type { ReactNode } from "react";
 import { colors, font } from "../theme";
 import { useAnalysis } from "../state/analysis";
+import LoadLogButton from "./LoadLogButton";
 
 const NAV = [
   { route: "dashboard", label: "Log overview" },
@@ -9,10 +9,6 @@ const NAV = [
   { route: "rules", label: "Rules" },
   { route: "query", label: "Query" },
 ] as const;
-
-// Sample context shown before any real log is loaded (matches the design).
-const SAMPLE_FILE = { name: "build-4471-console.log", detail: "212,904 lines" };
-const SAMPLE_RANGE = "14:02:11 → 14:19:47";
 
 function NavTab({ route, label, active }: { route: string; label: string; active: boolean }) {
   return (
@@ -56,20 +52,10 @@ function ContextPill({ label, children }: { label: string; children: ReactNode }
 }
 
 export default function Layout({ route, children }: { route: string; children: ReactNode }) {
-  const { result, fileName, timeRange, loading, error, sampleMode, loadFile } = useAnalysis();
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { result, fileName, timeRange, error, empty } = useAnalysis();
 
-  const displayFile = sampleMode ? SAMPLE_FILE.name : fileName ?? "—";
-  const displayDetail = sampleMode
-    ? SAMPLE_FILE.detail
-    : `${(result?.total ?? 0).toLocaleString()} events`;
-  const displayRange = sampleMode ? SAMPLE_RANGE : timeRange ?? "—";
-
-  function onPick(e: React.ChangeEvent<HTMLInputElement>) {
-    const f = e.target.files?.[0];
-    if (f) loadFile(f);
-    e.target.value = ""; // allow re-selecting the same file
-  }
+  const displayFile = empty ? "No file loaded" : fileName ?? "—";
+  const displayRange = empty ? "—" : timeRange ?? "—";
 
   return (
     <div style={{ minHeight: "100vh", background: colors.appBg, fontFamily: font.sans, color: colors.text }}>
@@ -104,54 +90,25 @@ export default function Layout({ route, children }: { route: string; children: R
       >
         <ContextPill label="file">
           <span style={{ color: colors.textFaint }}>FILE</span>
-          <span style={{ color: colors.text, fontWeight: 600 }}>{displayFile}</span>
-          <span style={{ color: colors.textFaint }}>·</span>
-          <span style={{ color: colors.textMuted }}>{displayDetail}</span>
+          <span style={{ color: empty ? colors.textMuted : colors.text, fontWeight: 600 }}>{displayFile}</span>
+          {!empty && (
+            <>
+              <span style={{ color: colors.textFaint }}>·</span>
+              <span style={{ color: colors.textMuted }}>{`${(result?.total ?? 0).toLocaleString()} events`}</span>
+            </>
+          )}
         </ContextPill>
         <ContextPill label="range">
           <span style={{ color: colors.textFaint }}>RANGE</span>
-          <span style={{ color: colors.text, fontWeight: 600 }}>{displayRange}</span>
+          <span style={{ color: empty ? colors.textMuted : colors.text, fontWeight: 600 }}>{displayRange}</span>
         </ContextPill>
-        {sampleMode && (
-          <span
-            style={{
-              fontSize: 11,
-              fontWeight: 700,
-              letterSpacing: "0.04em",
-              color: "#9a6b1f",
-              background: "#f3e8d8",
-              border: "1px solid #e8d7bf",
-              padding: "4px 8px",
-              borderRadius: 5,
-            }}
-          >
-            SAMPLE DATA
-          </span>
-        )}
         {error && (
           <span style={{ fontSize: 12, color: "#d03b3b", maxWidth: 360, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={error}>
             {error}
           </span>
         )}
         <div style={{ flex: 1 }} />
-        <input ref={fileInputRef} type="file" accept=".log,.txt,.crash,.log.*" style={{ display: "none" }} onChange={onPick} />
-        <button
-          onClick={() => fileInputRef.current?.click()}
-          disabled={loading}
-          style={{
-            padding: "8px 16px",
-            borderRadius: 8,
-            fontSize: 13,
-            fontWeight: 600,
-            background: colors.accent,
-            color: "#fff",
-            border: "none",
-            cursor: loading ? "wait" : "pointer",
-            opacity: loading ? 0.7 : 1,
-          }}
-        >
-          {loading ? "Analyzing…" : "Load log"}
-        </button>
+        <LoadLogButton variant="header" />
       </div>
 
       {/* Page content */}

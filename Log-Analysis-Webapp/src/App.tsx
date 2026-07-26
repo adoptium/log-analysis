@@ -33,10 +33,10 @@ export default function App() {
       page = <Rules />;
       break;
     case "investigate":
-      page = <Placeholder title="Investigate" note="The Investigate page is being built by another team member." />;
+      page = <Placeholder title="Investigate" note="Soon!" />;
       break;
     case "query":
-      page = <Placeholder title="Query" note="The Query page is not being implemented yet." />;
+      page = <Placeholder title="Query" note="Coming soon!" />;
       break;
     case "dashboard":
     default:

@@ -2,16 +2,6 @@ import { useMemo, useState } from "react";
 import { colors, font, typeMeta } from "../theme";
 import { useAnalysis } from "../state/analysis";
 
-// ─────────────────────────────────────────────────────────────
-// Rules. Ported from Rules.dc.html.
-//
-// The rule set lives in shared app state (state/analysis.tsx) and is
-// passed to the backend /analyze call, so toggling a rule changes how
-// the next loaded log is triaged (ignore / tag / set_level). The
-// backend has no rule-persistence or single-line-test endpoint yet, so
-// the "Test a rule" matcher runs client-side and Add/Edit/Delete are
-// placeholders.
-// ─────────────────────────────────────────────────────────────
 
 const uppercaseLabel: React.CSSProperties = {
   fontSize: 11,

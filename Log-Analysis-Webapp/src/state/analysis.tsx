@@ -66,7 +66,7 @@ type AnalysisContextValue = {
   loading: boolean;
   error: string | null;
   rules: UIRule[];
-  sampleMode: boolean;
+  empty: boolean; // no log analysed yet
   timeRange: string | null;
   rulesDirty: boolean; // rules changed since last load
   loadFile: (file: File) => Promise<void>;
@@ -128,7 +128,7 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
       loading,
       error,
       rules,
-      sampleMode: result === null,
+      empty: result === null,
       timeRange,
       rulesDirty,
       loadFile,
