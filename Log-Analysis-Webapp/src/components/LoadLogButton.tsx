@@ -2,11 +2,7 @@ import { useRef } from "react";
 import { colors } from "../theme";
 import { useAnalysis } from "../state/analysis";
 
-// ─────────────────────────────────────────────────────────────
-// Shared "Load log" control: a hidden file input + a styled button
-// that posts the chosen file to /analyze (via the analysis context).
-// Used by the header strip and the Dashboard empty-state CTA.
-// ─────────────────────────────────────────────────────────────
+// Load log button
 
 export default function LoadLogButton({ variant }: { variant: "header" | "cta" }) {
   const { loading, loadFile } = useAnalysis();

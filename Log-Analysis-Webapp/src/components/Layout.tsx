@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { colors, font } from "../theme";
 import { useAnalysis } from "../state/analysis";
 import LoadLogButton from "./LoadLogButton";
+import SavedAnalyses from "./SavedAnalyses";
 
 const NAV = [
   { route: "dashboard", label: "Log overview" },
@@ -99,7 +100,7 @@ export default function Layout({ route, children }: { route: string; children: R
           )}
         </ContextPill>
         <ContextPill label="range">
-          <span style={{ color: colors.textFaint }}>RANGE</span>
+          <span style={{ color: colors.textFaint }}>FILE RANGE</span>
           <span style={{ color: empty ? colors.textMuted : colors.text, fontWeight: 600 }}>{displayRange}</span>
         </ContextPill>
         {error && (
@@ -108,7 +109,10 @@ export default function Layout({ route, children }: { route: string; children: R
           </span>
         )}
         <div style={{ flex: 1 }} />
-        <LoadLogButton variant="header" />
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <SavedAnalyses />
+          <LoadLogButton variant="header" />
+        </div>
       </div>
 
       {/* Page content */}

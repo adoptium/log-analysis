@@ -5,21 +5,9 @@ import EmptyState from "../components/EmptyState";
 import LoadLogButton from "../components/LoadLogButton";
 import type { LogEvent } from "../types";
 
-// ─────────────────────────────────────────────────────────────
-// Investigate. Ported from the old monolithic App.tsx (samuel's
-// "investigate page rules/timechart" work) into this app's structure:
-// data comes from the shared analysis context, styling uses the theme
-// tokens, and the layout grid lives in index.css as .ll-investigate-*.
-//
-// Two features from the original were intentionally dropped because the
-// backend has no support for them: the per-row "Explain" (a client-side
-// Claude call) and "Correlate syslog" (no syslog ingestion yet).
-// ─────────────────────────────────────────────────────────────
-
 const CHART_BUCKETS = 40;
 
-// Levels charted / filtered, in display order. Extends the theme's
-// levelColor with FATAL, which the charts treat as critical.
+// Level colors for the chart bars. 
 const LEVEL_COLOR: Record<string, string> = { ...levelColor, FATAL: "#eb6834" };
 const LEVELS = ["SEVERE", "ERROR", "WARNING", "INFO", "FATAL"] as const;
 const lvlColor = (lvl: string | null) => (lvl ? LEVEL_COLOR[lvl] : undefined) ?? colors.textMuted;
@@ -32,9 +20,6 @@ const uppercaseLabel: React.CSSProperties = {
   textTransform: "uppercase",
 };
 
-// Parse an event to epoch-ms. The backend gives an ISO `timestamp`
-// (nullable); events without a parseable time are excluded from the
-// chart/bucket math (returned as 0 and filtered out).
 function tsMs(e: LogEvent): number {
   if (!e.timestamp) return 0;
   const t = Date.parse(e.timestamp);
@@ -381,6 +366,7 @@ export default function Investigate() {
                     <div style={{ padding: "16px 20px 20px 92px", background: colors.panel, fontFamily: font.mono, fontSize: 12.5, color: colors.textSecondary, display: "flex", flexDirection: "column", gap: 8 }}>
                       <div><span style={{ color: colors.textFaint }}>thread_id&nbsp;</span>{ev.thread_id ?? "—"}</div>
                       <div><span style={{ color: colors.textFaint }}>logger#method&nbsp;</span>{ev.logger}{ev.method ? `#${ev.method}` : ""}</div>
+                      <div><span style={{ color: colors.textFaint }}>full message&nbsp;</span>{ev.message}</div>
                       {ev.stack_trace && (
                         <div style={{ whiteSpace: "pre-wrap", background: colors.surfaceMuted, border: `1px solid ${colors.border}`, borderRadius: 6, padding: 10, fontSize: 12 }}>
                           {ev.stack_trace}

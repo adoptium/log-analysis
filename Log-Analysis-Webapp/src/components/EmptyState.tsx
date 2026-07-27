@@ -1,11 +1,7 @@
 import type { ReactNode } from "react";
 import { colors } from "../theme";
 
-// ─────────────────────────────────────────────────────────────
-// Presentational first-run / empty state. Shown when a page has no
-// data to display yet (e.g. no log loaded). The action slot holds a
-// CTA such as <LoadLogButton variant="cta" />.
-// ─────────────────────────────────────────────────────────────
+// Empty state component for pages with no content. Used for the pages when no file is loaded
 
 export default function EmptyState({
   title,

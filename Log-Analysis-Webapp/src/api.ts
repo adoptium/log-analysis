@@ -65,3 +65,52 @@ export async function fetchInWindow(
   });
   return jsonOrThrow<WindowResult>(res);
 }
+
+// ─────────────────────────────────────────────────────────────
+// Saved analyses (persisted in the backend's DuckDB store).
+// ─────────────────────────────────────────────────────────────
+
+// One row from GET /saved-analyses (backend EventStore.list_files()).
+export type SavedAnalysis = {
+  source_file: string; // the key used to load/delete this analysis
+  name: string; // basename, for display
+  total_events: number;
+  ignored_events: number;
+  earliest: string | null;
+  latest: string | null;
+};
+
+/** GET /saved-analyses — list previously saved analyses. */
+export async function listSavedAnalyses(): Promise<SavedAnalysis[]> {
+  const res = await fetch("/saved-analyses");
+  return jsonOrThrow<SavedAnalysis[]>(res);
+}
+
+/** POST /saved-analyses — persist the given events under `name`. */
+export async function saveAnalysis(
+  name: string,
+  events: LogEvent[],
+): Promise<{ name: string; saved: number }> {
+  const res = await fetch("/saved-analyses", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name, events }),
+  });
+  return jsonOrThrow(res);
+}
+
+/** GET /saved-analyses/{name} — load a saved analysis' events. */
+export async function loadSavedAnalysis(
+  name: string,
+): Promise<{ name: string; events: LogEvent[]; count: number }> {
+  const res = await fetch(`/saved-analyses/${encodeURIComponent(name)}`);
+  return jsonOrThrow(res);
+}
+
+/** DELETE /saved-analyses/{name} — remove a saved analysis. */
+export async function deleteSavedAnalysis(
+  name: string,
+): Promise<{ name: string; deleted: boolean }> {
+  const res = await fetch(`/saved-analyses/${encodeURIComponent(name)}`, { method: "DELETE" });
+  return jsonOrThrow(res);
+}

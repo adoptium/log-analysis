@@ -4,7 +4,7 @@ import { useAnalysis, shortTime } from "../state/analysis";
 import { fetchTopTemplates } from "../api";
 import EmptyState from "../components/EmptyState";
 import LoadLogButton from "../components/LoadLogButton";
-import type { AnalysisResult, TopTemplate } from "../types";
+import type { LogEvent, TopTemplate } from "../types";
 
 
 // The four levels the design charts, in display order.
@@ -21,6 +21,22 @@ const RANGE_DEFS = [
   { key: "custom", label: "Custom range" },
 ];
 
+// Preset window lengths, in hours. `custom` is driven by the two inputs.
+const RANGE_HOURS: Record<string, number | null> = { "1h": 1, "12h": 12, "24h": 24, custom: null };
+
+// Parse an event's ISO timestamp to epoch-ms (NaN if absent/unparseable).
+function tsMs(e: LogEvent): number {
+  if (!e.timestamp) return NaN;
+  return Date.parse(e.timestamp);
+}
+
+// Format epoch-ms as a value for <input type="datetime-local"> (local tz).
+function toLocalInput(ms: number): string {
+  const d = new Date(ms);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 const uppercaseLabel: React.CSSProperties = {
   fontSize: 11,
   fontWeight: 700,
@@ -29,18 +45,24 @@ const uppercaseLabel: React.CSSProperties = {
   textTransform: "uppercase",
 };
 
-// Derive severity cards from a backend result's level_counts.
-function cardsFromResult(result: AnalysisResult): Card[] {
+// Derive severity cards by counting active events per level (recomputed over
+// whatever slice of events is in scope, so it tracks the time-range filter).
+function cardsFromEvents(events: LogEvent[]): Card[] {
+  const counts: Record<string, number> = {};
+  for (const e of events) {
+    if (e.ignored || !e.level) continue;
+    counts[e.level] = (counts[e.level] ?? 0) + 1;
+  }
   return DISPLAY_LEVELS.map((label) => ({
     label,
-    count: result.level_counts[label] ?? 0,
+    count: counts[label] ?? 0,
     color: levelColor[label],
   }));
 }
 
-// Derive the fatal/error feed from a backend result's events.
-function feedFromResult(result: AnalysisResult): FeedRow[] {
-  return result.events
+// Derive the fatal/error feed from a list of events.
+function feedFromEvents(events: LogEvent[]): FeedRow[] {
+  return events
     .filter((e) => !e.ignored && e.level && FATAL_LEVELS.has(e.level))
     .map((e) => ({
       key: `${e.line_start}-${e.timestamp_raw ?? ""}`,
@@ -56,9 +78,54 @@ export default function Dashboard() {
   const { result, empty, fileName } = useAnalysis();
   const [range, setRange] = useState("24h");
   const [exportOpen, setExportOpen] = useState(false);
+  // Custom-range bounds (datetime-local strings); empty → fall back to data edges.
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo] = useState("");
 
-  const cards = useMemo(() => (result ? cardsFromResult(result) : []), [result]);
-  const feed = useMemo(() => (result ? feedFromResult(result) : []), [result]);
+  const allEvents = useMemo(() => result?.events ?? [], [result]);
+
+  // Data-anchored bounds: ranges are relative to the newest event, not wall
+  // clock, so "Last hour" means the last hour of the log itself.
+  const { dataMin, dataMax } = useMemo(() => {
+    let lo = Infinity;
+    let hi = -Infinity;
+    for (const e of allEvents) {
+      const t = tsMs(e);
+      if (Number.isNaN(t)) continue;
+      if (t < lo) lo = t;
+      if (t > hi) hi = t;
+    }
+    return hi === -Infinity ? { dataMin: null, dataMax: null } : { dataMin: lo, dataMax: hi };
+  }, [allEvents]);
+
+  // The active [lo, hi] window in epoch-ms for the current range selection.
+  const [lo, hi] = useMemo<[number, number]>(() => {
+    if (dataMax === null || dataMin === null) return [NaN, NaN];
+    if (range === "custom") {
+      const loMs = customFrom ? Date.parse(customFrom) : dataMin;
+      const hiMs = customTo ? Date.parse(customTo) : dataMax;
+      return [loMs, hiMs];
+    }
+    const hours = RANGE_HOURS[range] ?? 24;
+    return [dataMax - hours * 3600_000, dataMax];
+  }, [range, dataMin, dataMax, customFrom, customTo]);
+
+  // Active events within the window. Ignored events (suppressed by rules) are
+  // excluded so the range count matches the cards/chart/feed. Untimed events
+  // are dropped while a window is active; if bounds are unknown (no timestamps
+  // at all) show all active events.
+  const filteredEvents = useMemo(() => {
+    const active = allEvents.filter((e) => !e.ignored);
+    if (Number.isNaN(lo) || Number.isNaN(hi)) return active;
+    return active.filter((e) => {
+      const t = tsMs(e);
+      return !Number.isNaN(t) && t >= lo && t <= hi;
+    });
+  }, [allEvents, lo, hi]);
+
+  const cards = useMemo(() => (result ? cardsFromEvents(filteredEvents) : []), [result, filteredEvents]);
+  const feed = useMemo(() => (result ? feedFromEvents(filteredEvents) : []), [result, filteredEvents]);
+  const rangeCount = filteredEvents.length;
   const headerFile = fileName ?? "—";
 
   const maxCount = Math.max(1, ...cards.map((c) => c.count));
@@ -149,7 +216,41 @@ export default function Dashboard() {
             </button>
           );
         })}
+        <div style={{ flex: 1 }} />
+        <span style={{ fontSize: 12, color: colors.textMuted, fontFamily: font.mono }}>
+          {rangeCount.toLocaleString()} events in range
+        </span>
       </div>
+
+      {/* Custom range inputs (only for the custom preset) */}
+      {range === "custom" && (
+        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 24px 0 24px", flexWrap: "wrap" }}>
+          <label style={{ fontSize: 12, fontWeight: 600, color: colors.textMuted }}>FROM</label>
+          <input
+            type="datetime-local"
+            step="1"
+            value={customFrom || (dataMin !== null ? toLocalInput(dataMin) : "")}
+            onChange={(e) => setCustomFrom(e.target.value)}
+            style={{ fontSize: 13, fontFamily: font.mono, background: colors.surfaceMuted, border: `1px solid ${colors.border}`, borderRadius: 6, padding: "6px 8px", color: colors.textSecondary }}
+          />
+          <label style={{ fontSize: 12, fontWeight: 600, color: colors.textMuted }}>TO</label>
+          <input
+            type="datetime-local"
+            step="1"
+            value={customTo || (dataMax !== null ? toLocalInput(dataMax) : "")}
+            onChange={(e) => setCustomTo(e.target.value)}
+            style={{ fontSize: 13, fontFamily: font.mono, background: colors.surfaceMuted, border: `1px solid ${colors.border}`, borderRadius: 6, padding: "6px 8px", color: colors.textSecondary }}
+          />
+          {(customFrom || customTo) && (
+            <button
+              onClick={() => { setCustomFrom(""); setCustomTo(""); }}
+              style={{ fontSize: 12, fontWeight: 600, color: colors.textMuted, background: colors.surfaceMuted, border: "none", borderRadius: 5, padding: "5px 10px", cursor: "pointer" }}
+            >
+              Reset
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Severity cards */}
       <div className="ll-severity-grid" style={{ padding: "20px 24px" }}>
@@ -259,7 +360,7 @@ export default function Dashboard() {
           fileName={headerFile}
           cards={cards}
           feed={feed}
-          result={result}
+          events={filteredEvents}
         />
       )}
     </div>
@@ -276,27 +377,27 @@ function ExportModal({
   fileName,
   cards,
   feed,
-  result,
+  events,
 }: {
   onClose: () => void;
   fileName: string;
   cards: Card[];
   feed: FeedRow[];
-  result: AnalysisResult | null;
+  events: LogEvent[];
 }) {
   const [templates, setTemplates] = useState<TopTemplate[]>([]);
-  const [loadingTemplates, setLoadingTemplates] = useState(!!result);
+  const [loadingTemplates, setLoadingTemplates] = useState(events.length > 0);
 
   useEffect(() => {
-    if (!result) return;
+    if (events.length === 0) return;
     let cancelled = false;
     setLoadingTemplates(true);
-    fetchTopTemplates(result.events, 8)
+    fetchTopTemplates(events, 8)
       .then((t) => { if (!cancelled) setTemplates(t); })
       .catch(() => { if (!cancelled) setTemplates([]); })
       .finally(() => { if (!cancelled) setLoadingTemplates(false); });
     return () => { cancelled = true; };
-  }, [result]);
+  }, [events]);
 
   return (
     <div
