@@ -12,9 +12,9 @@ const uppercaseLabel: React.CSSProperties = {
 };
 
 export default function Rules() {
-  const { rules, setRuleOn, sampleMode, rulesDirty } = useAnalysis();
+  const { rules, setRuleOn, empty, rulesDirty } = useAnalysis();
   const [testInput, setTestInput] = useState(
-    'java.io.IOException: Cannot run program "npm" (in directory "/workspace/build"): error=2, No such file or directory'
+    ''
   );
 
   // Live regex match — first enabled, non-time-window rule that matches.
@@ -49,7 +49,7 @@ export default function Rules() {
       </div>
 
       {/* Hint: rules changed after a log was loaded */}
-      {!sampleMode && rulesDirty && (
+      {!empty && rulesDirty && (
         <div style={{ margin: "12px 24px 0 24px", padding: "8px 12px", fontSize: 12, color: "#9a6b1f", background: "#f3e8d8", border: "1px solid #e8d7bf", borderRadius: 6 }}>
           Rules changed — reload the log (Load log) to re-apply them to the analysis.
         </div>
@@ -67,6 +67,15 @@ export default function Rules() {
             <div style={{ width: 150 }}>Action</div>
             <div style={{ width: 80 }}>Controls</div>
           </div>
+
+          {rules.length === 0 && (
+            <div style={{ padding: "48px 24px", textAlign: "center" }}>
+              <div style={{ fontSize: 14, fontWeight: 600, color: colors.textSecondary, marginBottom: 6 }}>No rules configured</div>
+              <div style={{ fontSize: 13, color: colors.textMuted, maxWidth: 380, margin: "0 auto" }}>
+                Triage rules will appear here. Creating rules isn't wired to a backend yet.
+              </div>
+            </div>
+          )}
 
           {rules.map((rule) => {
             const m = typeMeta[rule.type];

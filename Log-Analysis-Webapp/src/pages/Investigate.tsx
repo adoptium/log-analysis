@@ -315,6 +315,9 @@ export default function Investigate() {
               </span>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 220, overflowY: "auto", paddingRight: 4 }}>
+              {rules.length === 0 && (
+                <div style={{ fontSize: 12, color: colors.textMuted }}>No active rules.</div>
+              )}
               {rules.map((rule) => {
                 const meta = typeMeta[rule.type];
                 return (

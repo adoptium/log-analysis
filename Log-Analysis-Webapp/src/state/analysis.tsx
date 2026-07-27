@@ -22,19 +22,6 @@ export type UIRule = {
   on: boolean;
 };
 
-// Sample rule set from the design — the starting point until the
-// backend grows real rule persistence (there is no rules endpoint yet).
-const DEFAULT_RULES: UIRule[] = [
-  { id: "suppress-known-agent-noise", type: "ignore", target: "message", regex: "Cannot run program .* error=2", actionDetail: "suppress", on: true },
-  { id: "flag-flaky-agent", type: "tag", target: "stack trace", regex: "ClosedChannelException", actionDetail: "tag: flaky-agent", on: true },
-  { id: "escalate-oom", type: "set_level", target: "stack trace", regex: "OutOfMemoryError", actionDetail: "set level: SEVERE", on: true },
-  { id: "capacity-watch", type: "tag", target: "message", regex: "stuck in queue for \\d+s", actionDetail: "tag: capacity", on: true },
-  { id: "downstream-noise", type: "ignore", target: "message", regex: "Skipped \\d+ downstream jobs", actionDetail: "suppress", on: false },
-  { id: "escalate-build-fail", type: "set_level", target: "message", regex: "Maven build step failed with exit code \\d+", actionDetail: "set level: ERROR", on: true },
-  { id: "noisy-checkout-logger", type: "ignore", target: "logger", regex: "h\\.p\\.g\\.GitSCM", actionDetail: "suppress", on: true },
-  { id: "maintenance-window-outage", type: "time_window", target: "timestamp", regex: "13:50:00 – 14:05:00", actionDetail: "suppress", on: true },
-];
-
 // Map enabled UI rules onto the backend Rule shape (AnalyzeRule — note it
 // has no client-side `id`). Types the backend can't express (time_window /
 // a timestamp target) are dropped.
@@ -80,7 +67,10 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
   const [fileName, setFileName] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [rules, setRules] = useState<UIRule[]>(DEFAULT_RULES);
+  // Rules start empty. There is no rules endpoint yet, and creating rules
+  // in the UI is not wired to a backend, so the set stays empty until that
+  // lands. setRuleOn still toggles any rules that exist.
+  const [rules, setRules] = useState<UIRule[]>([]);
   const [rulesDirty, setRulesDirty] = useState(false);
 
   // Keep a ref so loadFile always reads the latest rules without being

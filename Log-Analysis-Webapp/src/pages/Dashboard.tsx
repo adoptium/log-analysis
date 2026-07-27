@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { colors, font, levelColor } from "../theme";
 import { useAnalysis, shortTime } from "../state/analysis";
 import { fetchTopTemplates } from "../api";
+import EmptyState from "../components/EmptyState";
+import LoadLogButton from "../components/LoadLogButton";
 import type { AnalysisResult, TopTemplate } from "../types";
 
 
@@ -11,26 +13,6 @@ const FATAL_LEVELS = new Set(["SEVERE", "FATAL", "ERROR"]);
 
 type Card = { label: string; count: number; color: string };
 type FeedRow = { key: string; line: number; time: string; level: string; logger: string; message: string };
-
-// ── Sample fallback data (matches the design) ──
-const SAMPLE_CARDS: Card[] = [
-  { label: "SEVERE", count: 156, color: levelColor.SEVERE },
-  { label: "ERROR", count: 353, color: levelColor.ERROR },
-  { label: "WARNING", count: 412, color: levelColor.WARNING },
-  { label: "INFO", count: 1840, color: levelColor.INFO },
-];
-const SAMPLE_FEED: FeedRow[] = [
-  { key: "1", line: 18422, time: "14:11:03.221", level: "ERROR", logger: "h.r.Launcher#launch", message: "Process apparently never started (see java.io.IOException...)" },
-  { key: "2", line: 18452, time: "14:11:09.117", level: "SEVERE", logger: "o.j.p.w.WorkflowRun#run", message: "Terminating agent connection: channel already closed" },
-  { key: "3", line: 18502, time: "14:13:58.410", level: "ERROR", logger: "h.t.Maven#perform", message: "Maven build step failed with exit code 1" },
-];
-const SAMPLE_TEMPLATES: TopTemplate[] = [
-  { rank: 1, template_id: 1, count: 214, template: "java.io.IOException: Cannot run program <PATH>", example: "" },
-  { rank: 2, template_id: 2, count: 156, template: "ClosedChannelException at Channel.terminate", example: "" },
-  { rank: 3, template_id: 3, count: 98, template: "OutOfMemoryError: Java heap space", example: "" },
-  { rank: 4, template_id: 4, count: 87, template: "Item stuck in queue for <N>s", example: "" },
-];
-const SAMPLE_FILE_NAME = "build-4471-console.log";
 
 const RANGE_DEFS = [
   { key: "1h", label: "Last hour" },
@@ -71,17 +53,35 @@ function feedFromResult(result: AnalysisResult): FeedRow[] {
 }
 
 export default function Dashboard() {
-  const { result, sampleMode, fileName } = useAnalysis();
+  const { result, empty, fileName } = useAnalysis();
   const [range, setRange] = useState("24h");
   const [exportOpen, setExportOpen] = useState(false);
 
-  const cards = useMemo(() => (result ? cardsFromResult(result) : SAMPLE_CARDS), [result]);
-  const feed = useMemo(() => (result ? feedFromResult(result) : SAMPLE_FEED), [result]);
-  const headerFile = sampleMode ? SAMPLE_FILE_NAME : fileName ?? "—";
+  const cards = useMemo(() => (result ? cardsFromResult(result) : []), [result]);
+  const feed = useMemo(() => (result ? feedFromResult(result) : []), [result]);
+  const headerFile = fileName ?? "—";
 
   const maxCount = Math.max(1, ...cards.map((c) => c.count));
   const maxSqrt = Math.sqrt(maxCount);
   const levelBars = cards.map((c) => ({ ...c, h: c.count > 0 ? 24 + (Math.sqrt(c.count) / maxSqrt) * 130 : 2 }));
+
+  if (empty) {
+    return (
+      <div>
+        <div style={{ padding: "24px 24px 0 24px" }}>
+          <div style={{ fontSize: 20, fontWeight: 700, color: colors.text }}>Log overview</div>
+          <div style={{ fontSize: 13, color: colors.textMuted, marginTop: 6 }}>
+            Severity counts, the fatal &amp; error feed, and the level chart appear here once a log is analysed.
+          </div>
+        </div>
+        <EmptyState
+          title="No log loaded"
+          subtitle="Load a log file to see severity counts, fatal & error events, and the events-by-level chart."
+          action={<LoadLogButton variant="cta" />}
+        />
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -284,7 +284,7 @@ function ExportModal({
   feed: FeedRow[];
   result: AnalysisResult | null;
 }) {
-  const [templates, setTemplates] = useState<TopTemplate[]>(result ? [] : SAMPLE_TEMPLATES);
+  const [templates, setTemplates] = useState<TopTemplate[]>([]);
   const [loadingTemplates, setLoadingTemplates] = useState(!!result);
 
   useEffect(() => {
