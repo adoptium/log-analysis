@@ -1,8 +1,12 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { colors, font } from "../theme";
 import { useAnalysis } from "../state/analysis";
 import LoadLogButton from "./LoadLogButton";
+<<<<<<< Updated upstream
 import SavedAnalyses from "./SavedAnalyses";
+=======
+import AiAssistantOverlay from "./AiAssistantOverlay";
+>>>>>>> Stashed changes
 
 const NAV = [
   { route: "dashboard", label: "Log overview" },
@@ -54,6 +58,7 @@ function ContextPill({ label, children }: { label: string; children: ReactNode }
 
 export default function Layout({ route, children }: { route: string; children: ReactNode }) {
   const { result, fileName, timeRange, error, empty } = useAnalysis();
+  const [aiOverlayOpen, setAiOverlayOpen] = useState(false);
 
   const displayFile = empty ? "No file loaded" : fileName ?? "—";
   const displayRange = empty ? "—" : timeRange ?? "—";
@@ -109,14 +114,42 @@ export default function Layout({ route, children }: { route: string; children: R
           </span>
         )}
         <div style={{ flex: 1 }} />
+<<<<<<< Updated upstream
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <SavedAnalyses />
           <LoadLogButton variant="header" />
         </div>
+=======
+        <button
+          onClick={() => setAiOverlayOpen((prev) => !prev)}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            padding: "6px 14px",
+            borderRadius: 8,
+            border: `1px solid ${colors.accent}`,
+            background: aiOverlayOpen ? colors.accent : colors.accentBg,
+            color: aiOverlayOpen ? "#ffffff" : colors.accent,
+            fontWeight: 600,
+            fontSize: 13,
+            cursor: "pointer",
+            transition: "all 0.15s ease",
+          }}
+        >
+          <span>✨</span>
+          <span>AI Assistant</span>
+        </button>
+        <LoadLogButton variant="header" />
+>>>>>>> Stashed changes
       </div>
 
       {/* Page content */}
       <div style={{ maxWidth: 1680, margin: "0 auto" }}>{children}</div>
+
+      {/* Right Collapsible AI Overlay Drawer (~25% width) */}
+      <AiAssistantOverlay isOpen={aiOverlayOpen} onClose={() => setAiOverlayOpen(false)} />
     </div>
   );
 }
+

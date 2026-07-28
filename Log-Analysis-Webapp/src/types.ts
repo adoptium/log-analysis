@@ -48,3 +48,20 @@ export interface WindowResult {
   events: LogEvent[]
   count: number
 }
+
+export interface AIQueryPayload {
+  events?: LogEvent[]
+  user_query?: string
+  provider?: string
+  model?: string
+  api_key?: string
+  disable_retrieval?: boolean
+}
+
+export interface AIQueryResponse {
+  summary: string
+  provider?: string
+  model?: string
+  events_analyzed?: number
+}
+

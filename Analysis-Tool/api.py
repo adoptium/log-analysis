@@ -11,6 +11,7 @@ Endpoints:
 from __future__ import annotations
 
 import json
+import os
 import tempfile
 from collections import Counter
 from datetime import datetime, timedelta
@@ -32,6 +33,8 @@ from analyzer import (
     level_counts,
     parse_timestamp,
 )
+from ai_providers import build_provider
+from summarize_with_ai import DEFAULT_PROMPT, build_prompt, build_retrieval_context
 
 app = FastAPI(title="Eclipse Log Analysis API")
 
@@ -77,6 +80,15 @@ class InWindowRequest(BaseModel):
 class SaveAnalysisRequest(BaseModel):
     name: str
     events: list[dict]
+
+
+class AIQueryRequest(BaseModel):
+    events: list[dict] = []
+    user_query: Optional[str] = None
+    provider: str = "copilot"
+    model: Optional[str] = None
+    api_key: Optional[str] = None
+    disable_retrieval: bool = False
 
 
 # --------------------------------------------------------------------------- #
@@ -242,3 +254,72 @@ def get_in_window(body: InWindowRequest):
         if e.timestamp and lo <= e.timestamp <= hi
     ]
     return {"events": matched, "count": len(matched)}
+
+
+@app.post("/ai-query")
+def run_ai_query(body: AIQueryRequest):
+    """
+    Summarize or analyze log events using an AI provider (copilot or bob).
+    """
+    user_query = (body.user_query or "").strip()
+    prompt = build_prompt(user_query)
+    events = _dicts_to_events(body.events)
+
+    if body.disable_retrieval or not events:
+        counts: Counter = Counter()
+        sample: dict[int, tuple[Optional[str], str]] = {}
+        for ev in active(events):
+            if ev.template_id is None:
+                continue
+            counts[ev.template_id] += 1
+            sample.setdefault(ev.template_id, (ev.template, ev.message))
+
+        top_lines = []
+        for rank, (tid, cnt) in enumerate(counts.most_common(20), start=1):
+            tmpl, msg = sample[tid]
+            top_lines.append(f"[#{rank}:template_{tid}] x{cnt}  {tmpl or msg}")
+
+        input_text = "\n".join(top_lines) if top_lines else "No event templates available."
+    else:
+        counts: Counter = Counter()
+        sample: dict[int, tuple[Optional[str], str]] = {}
+        for ev in active(events):
+            if ev.template_id is None:
+                continue
+            counts[ev.template_id] += 1
+            sample.setdefault(ev.template_id, (ev.template, ev.message))
+
+        top_lines = []
+        for rank, (tid, cnt) in enumerate(counts.most_common(20), start=1):
+            tmpl, msg = sample[tid]
+            top_lines.append(f"[#{rank}:template_{tid}] x{cnt}  {tmpl or msg}")
+
+        top_text = "\n".join(top_lines) if top_lines else "No template counts available."
+        retrieval_block = build_retrieval_context(
+            events,
+            template_budget=12,
+            examples_per_template=2,
+            rare_threshold=2,
+        )
+        input_text = (
+            f"Top Message Templates:\n{top_text}\n\n"
+            "---\n"
+            "Retrieval Evidence from Log Events:\n\n"
+            f"{retrieval_block}"
+        )
+
+    if body.api_key and body.api_key.strip():
+        os.environ["COPILOT_API_KEY"] = body.api_key.strip()
+
+    try:
+        provider = build_provider(body.provider)
+        summary = provider.summarize(input_text, prompt, body.model)
+        return {
+            "summary": summary,
+            "provider": body.provider,
+            "model": body.model,
+            "events_analyzed": len(events),
+        }
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+

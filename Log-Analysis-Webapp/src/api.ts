@@ -4,7 +4,7 @@
 // vite.config.ts). No analysis logic lives here — the backend owns it.
 // ─────────────────────────────────────────────────────────────
 
-import type { AnalysisResult, LogEvent, TopTemplate, WindowResult } from "./types";
+import type { AIQueryPayload, AIQueryResponse, AnalysisResult, LogEvent, TopTemplate, WindowResult } from "./types";
 
 // The backend Rule dataclass has no client-side `id`; callers pass this shape.
 export type AnalyzeRule = {
@@ -66,6 +66,7 @@ export async function fetchInWindow(
   return jsonOrThrow<WindowResult>(res);
 }
 
+<<<<<<< Updated upstream
 // ─────────────────────────────────────────────────────────────
 // Saved analyses (persisted in the backend's DuckDB store).
 // ─────────────────────────────────────────────────────────────
@@ -114,3 +115,15 @@ export async function deleteSavedAnalysis(
   const res = await fetch(`/saved-analyses/${encodeURIComponent(name)}`, { method: "DELETE" });
   return jsonOrThrow(res);
 }
+=======
+/** POST /ai-query — summarize or query log events using AI provider. */
+export async function fetchAiSummary(payload: AIQueryPayload): Promise<AIQueryResponse> {
+  const res = await fetch("/ai-query", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  return jsonOrThrow<AIQueryResponse>(res);
+}
+
+>>>>>>> Stashed changes
