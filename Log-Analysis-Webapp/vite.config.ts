@@ -14,6 +14,7 @@ export default defineConfig({
       '/in-window': 'http://localhost:8000',
       '/health': 'http://localhost:8000',
       '/saved-analyses': 'http://localhost:8000',
+      '/ai-query': 'http://localhost:8000',
     },
   },
 })
