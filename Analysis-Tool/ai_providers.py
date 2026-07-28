@@ -156,29 +156,8 @@ class GitHubCopilotProvider(AIProvider):
         return content
 
 
-class MockProvider(AIProvider):
-    """Fallback provider for demonstration or offline testing without API keys."""
-
-    def summarize(self, input_text: str, prompt: str, model: Optional[str]) -> str:
-        return (
-            "### 🤖 AI Log Analysis Summary (Demo Mode)\n\n"
-            "**Dominant Patterns Identified:**\n"
-            "- Analyzed log events and extracted key message templates.\n"
-            "- Detected recurring warnings and error stack traces in Jenkins build runs.\n\n"
-            "**Key Findings:**\n"
-            "1. **Permission / Security Noise:** Recurring `AccessDeniedException` warnings from anonymous access attempts.\n"
-            "2. **Job Execution:** Multi-line log events properly parsed into structured templates.\n\n"
-            "**Recommended Next Steps:**\n"
-            "1. Configure a rule filter to silence expected noise.\n"
-            "2. Inspect severe events within the Investigate tab."
-        )
-
-
 def build_provider(provider_name: str) -> AIProvider:
     normalized = provider_name.strip().lower()
-    if normalized in {"mock", "demo"}:
-        return MockProvider()
-
     if normalized == "bob":
         return BobProvider()
 
@@ -210,6 +189,5 @@ def build_provider(provider_name: str) -> AIProvider:
         )
 
     raise RuntimeError(
-        f"Unknown AI provider '{provider_name}'. Supported values: copilot, bob, mock"
+        f"Unknown AI provider '{provider_name}'. Supported values: copilot, bob"
     )
-
