@@ -74,10 +74,35 @@ export function shortTime(raw: string | null, iso: string | null): string {
   return m ? m[1] : "—";
 }
 
+// The saved-analyses load endpoint returns a reduced event projection
+// (no line_end / timestamp_raw / thread_id / method / template / raw, and
+// ignored may be absent). Fill every LogEvent field with a safe default so
+// downstream code that assumes the full shape can't hit an undefined.
+function normalizeLoadedEvent(e: Partial<LogEvent>): LogEvent {
+  return {
+    line_start: e.line_start ?? 0,
+    line_end: e.line_end ?? e.line_start ?? 0,
+    timestamp: e.timestamp ?? null,
+    timestamp_raw: e.timestamp_raw ?? null,
+    thread_id: e.thread_id ?? null,
+    level: e.level ?? null,
+    logger: e.logger ?? null,
+    method: e.method ?? null,
+    message: e.message ?? "",
+    stack_trace: e.stack_trace ?? null,
+    raw: e.raw ?? "",
+    template_id: e.template_id ?? null,
+    template: e.template ?? null,
+    tags: e.tags ?? [],
+    ignored: e.ignored ?? false,
+  };
+}
+
 // Rebuild the summary shape /analyze returns from a bare list of events.
 // Used when loading a saved analysis, which returns only events. Level
 // counts are over active (non-ignored) events, matching the backend.
-function resultFromEvents(events: LogEvent[]): AnalysisResult {
+function resultFromEvents(rawEvents: LogEvent[]): AnalysisResult {
+  const events = rawEvents.map(normalizeLoadedEvent);
   const activeEvents = events.filter((e) => !e.ignored);
   const level_counts: Record<string, number> = {};
   for (const e of activeEvents) {

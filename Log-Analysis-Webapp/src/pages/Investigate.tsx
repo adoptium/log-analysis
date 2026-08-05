@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { colors, font, levelColor, typeMeta } from "../theme";
-import { useAnalysis } from "../state/analysis";
+import { useAnalysis, shortTime } from "../state/analysis";
 import EmptyState from "../components/EmptyState";
 import LoadLogButton from "../components/LoadLogButton";
 import type { LogEvent } from "../types";
@@ -32,6 +32,20 @@ function tsMs(e: LogEvent): number {
 const fmtTime = (ms: number) =>
   new Date(ms).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false, timeZone: "UTC" });
 
+// Min/max in a single pass. Must NOT use Math.min(...arr): spreading a large
+// array as call arguments throws RangeError past the engine's arg limit
+// (~65k in Safari), which a big loaded analysis (tens of thousands of events)
+// hits. Returns [0, 0] for an empty array (callers guard on length first).
+function minMax(nums: number[]): [number, number] {
+  let lo = Infinity;
+  let hi = -Infinity;
+  for (const n of nums) {
+    if (n < lo) lo = n;
+    if (n > hi) hi = n;
+  }
+  return hi === -Infinity ? [0, 0] : [lo, hi];
+}
+
 type Bar = { index: number; h: number; c: string; count: number; opacity: number; outline: string; rangeLabel: string };
 
 export default function Investigate() {
@@ -54,15 +68,15 @@ export default function Investigate() {
   const { minTs, bucketDuration, hasTime } = useMemo(() => {
     const times = activeEvents.map(tsMs).filter((t) => t > 0);
     if (!times.length) return { minTs: 0, bucketDuration: 1000, hasTime: false };
-    const lo = Math.min(...times);
-    const hi = Math.max(...times);
+    const [lo, hi] = minMax(times);
     return { minTs: lo, bucketDuration: (hi - lo) / CHART_BUCKETS || 1000, hasTime: true };
   }, [activeEvents]);
 
   const overallRange = useMemo(() => {
     const times = activeEvents.map(tsMs).filter((t) => t > 0);
     if (!times.length) return "—";
-    return `${fmtTime(Math.min(...times))} – ${fmtTime(Math.max(...times))}`;
+    const [lo, hi] = minMax(times);
+    return `${fmtTime(lo)} – ${fmtTime(hi)}`;
   }, [activeEvents]);
 
   const chartBars = useMemo<Bar[]>(() => {
@@ -350,7 +364,7 @@ export default function Investigate() {
                   <div onClick={() => toggleRow(key)} className="ll-row ll-clickable" style={{ display: "flex", gap: 12, padding: "10px 20px", fontSize: 12.5, fontFamily: font.mono, alignItems: "center" }}>
                     <div style={{ width: 60, color: colors.textFaint }}>{ev.line_start}</div>
                     <div style={{ width: 90, color: colors.textMuted }}>
-                      {ev.timestamp_raw ? (ev.timestamp_raw.split(" ").pop() ?? "").substring(0, 12) : "—"}
+                      {shortTime(ev.timestamp_raw, ev.timestamp)}
                     </div>
                     <div style={{ width: 60, fontWeight: 700, color: lvlColor(ev.level) }}>{ev.level}</div>
                     <div style={{ width: 170, color: colors.textSecondary, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={ev.logger ?? ""}>
