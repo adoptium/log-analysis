@@ -67,11 +67,27 @@ function loadStoredRules(): UIRule[] {
   }
 }
 
-// Extract "HH:MM:SS.mmm" from a raw Jenkins timestamp or ISO string.
+// Render an event time as "HH:MM:SS.mmm" in UTC — matching the rest of the app,
+// which formats time in UTC (see fmtTime in Investigate).
 export function shortTime(raw: string | null, iso: string | null): string {
-  const src = raw ?? iso ?? "";
-  const m = src.match(/(\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?)/);
-  return m ? m[1] : "—";
+  // Fresh analyses carry the raw Jenkins timestamp, already UTC ("+0000"), so
+  // the literal HH:MM:SS.mmm in it is correct — pull it straight out.
+  if (raw) {
+    const m = raw.match(/(\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?)/);
+    if (m) return m[1];
+  }
+  // Loaded analyses only have the ISO timestamp, which the store renders with a
+  // local offset (e.g. -04:00). Regex-extracting that would show offset-local
+  // time and be hours off from the UTC chart/range, so format it in UTC.
+  if (iso) {
+    const ms = Date.parse(iso);
+    if (!Number.isNaN(ms)) {
+      const d = new Date(ms);
+      const pad = (n: number, len = 2) => String(n).padStart(len, "0");
+      return `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())}.${pad(d.getUTCMilliseconds(), 3)}`;
+    }
+  }
+  return "—";
 }
 
 // The saved-analyses load endpoint returns a reduced event projection
@@ -98,11 +114,50 @@ function normalizeLoadedEvent(e: Partial<LogEvent>): LogEvent {
   };
 }
 
-// Rebuild the summary shape /analyze returns from a bare list of events.
-// Used when loading a saved analysis, which returns only events. Level
-// counts are over active (non-ignored) events, matching the backend.
-function resultFromEvents(rawEvents: LogEvent[]): AnalysisResult {
-  const events = rawEvents.map(normalizeLoadedEvent);
+function safeTest(pattern: string, value: string | null): boolean {
+  try {
+    return new RegExp(pattern).test(value ?? "");
+  } catch {
+    return false;
+  }
+}
+
+// Apply triage rules to events in the browser, mirroring analyzer.RuleSet.apply
+// (Python) so a loaded saved analysis — which never passes through /analyze —
+// can still be filtered/tagged by the current rule set. Pure: always derives
+// from the untouched base events, so it's idempotent across re-applies (toggle
+// a rule off, re-apply, and its effect is gone). Match semantics match the
+// backend: level compared against the possibly-reclassified level; logger /
+// message / stack matched via regex (re.search ≈ RegExp.test, "match anywhere").
+function applyRules(events: LogEvent[], rules: AnalyzeRule[]): LogEvent[] {
+  if (rules.length === 0) return events;
+  return events.map((base) => {
+    let ignored = base.ignored;
+    let level = base.level;
+    const tags = [...base.tags];
+    for (const r of rules) {
+      const matches =
+        (!r.level || level === r.level) &&
+        (!r.logger_regex || safeTest(r.logger_regex, base.logger)) &&
+        (!r.message_regex || safeTest(r.message_regex, base.message)) &&
+        (!r.stack_regex || safeTest(r.stack_regex, base.stack_trace));
+      if (!matches) continue;
+      if (r.action === "ignore") ignored = true;
+      else if (r.action === "tag" && r.tag) {
+        if (!tags.includes(r.tag)) tags.push(r.tag);
+      } else if (r.action === "set_level" && r.set_level) {
+        level = r.set_level;
+      }
+    }
+    return ignored === base.ignored && level === base.level && tags.length === base.tags.length
+      ? base
+      : { ...base, ignored, level, tags };
+  });
+}
+
+// Build the summary shape /analyze returns from a list of (already-normalized,
+// rule-applied) events. Level counts are over active (non-ignored) events.
+function resultFromEvents(events: LogEvent[]): AnalysisResult {
   const activeEvents = events.filter((e) => !e.ignored);
   const level_counts: Record<string, number> = {};
   for (const e of activeEvents) {
@@ -129,12 +184,12 @@ type AnalysisContextValue = {
   rulesDirty: boolean; // rules changed since last load
   saving: boolean; // a save is in flight (distinct from analysis `loading`)
   saved: SavedAnalysis[]; // persisted analyses from the backend
-  reapplyAvailable: boolean; // a file is retained, so rules can be re-applied
+  reapplyAvailable: boolean; // an analysis is loaded, so rules can be re-applied
   loadFile: (file: File) => Promise<void>;
   setRuleOn: (id: string, on: boolean) => void;
   upsertRule: (rule: UIRule) => void; // add or replace a rule (matched by id)
   deleteRule: (id: string) => void;
-  reapplyRules: () => Promise<void>; // re-run /analyze on the retained file
+  reapplyRules: () => Promise<void>; // re-apply rules (re-/analyze a file, or recompute a loaded analysis)
   refreshSaved: () => Promise<void>;
   saveCurrent: (name: string) => Promise<void>;
   loadSaved: (sourceFile: string) => Promise<void>;
@@ -167,9 +222,13 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
   resultRef.current = result;
 
   // The last file analysed, retained so rules can be re-applied in place
-  // (re-run /analyze) without the user re-picking it from disk. Loading a
-  // saved analysis clears it — there's no file to re-run in that case.
+  // (re-run /analyze) without the user re-picking it from disk.
   const lastFileRef = useRef<File | null>(null);
+
+  // The untouched events of a loaded saved analysis (no source File). Rules are
+  // applied to these client-side, always from this pristine base so re-applies
+  // stay idempotent. Null when the current analysis came from a file instead.
+  const loadedRawEventsRef = useRef<LogEvent[] | null>(null);
 
   // Persist rules whenever they change so authored rules survive a reload.
   useEffect(() => {
@@ -184,6 +243,7 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     setError(null);
     lastFileRef.current = file;
+    loadedRawEventsRef.current = null; // file-based: rules applied server-side
     setReapplyAvailable(true);
     try {
       const res = await analyzeLog(file, toBackendRules(rulesRef.current));
@@ -197,10 +257,19 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  // Re-run analysis on the retained file with the current rule set.
+  // Re-apply the current rule set to whatever is loaded: re-run /analyze for a
+  // file, or recompute client-side over the pristine events of a saved analysis.
   const reapplyRules = useCallback(async () => {
     const file = lastFileRef.current;
-    if (file) await loadFile(file);
+    if (file) {
+      await loadFile(file);
+      return;
+    }
+    const raw = loadedRawEventsRef.current;
+    if (raw) {
+      setResult(resultFromEvents(applyRules(raw, toBackendRules(rulesRef.current))));
+      setRulesDirty(false);
+    }
   }, [loadFile]);
 
   const setRuleOn = useCallback((id: string, on: boolean) => {
@@ -260,14 +329,15 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
   const loadSaved = useCallback(async (sourceFile: string) => {
     setLoading(true);
     setError(null);
-    // A saved analysis is a pre-computed snapshot with no source File, so
-    // rules can't be re-applied to it via /analyze.
+    // No source File, so rules are applied client-side instead of via /analyze.
     lastFileRef.current = null;
-    setReapplyAvailable(false);
     try {
       const { events } = await loadSavedAnalysis(sourceFile);
-      setResult(resultFromEvents(events));
+      const raw = events.map(normalizeLoadedEvent);
+      loadedRawEventsRef.current = raw;
+      setResult(resultFromEvents(applyRules(raw, toBackendRules(rulesRef.current))));
       setFileName(sourceFile.split("/").pop() || sourceFile);
+      setReapplyAvailable(true); // rules can be re-applied client-side
       setRulesDirty(false);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Load failed");
