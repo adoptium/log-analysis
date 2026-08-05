@@ -21,7 +21,22 @@ part.
 
 ---
 
-## The analyzer layer
+## How to run the webapp:
+### Start a virtual environment
+python3 -m venv venv
+source venv/bin/activate
+
+### Start the backend
+cd Analysis-Tool
+pip install -r requirements.txt
+uvicorn api:app --reload
+
+#Frontend (from Log-Analysis-Webapp/)
+cd ../Log-Analysis-Webapp 
+npm install
+npm run dev
+
+### The analyzer layer
 
 `analyzer.py` is the **ingestion and structuring layer**. Its one
 job is to turn raw, messy Jenkins log text into clean, structured `LogEvent`
