@@ -1,18 +1,3 @@
-# How to run the webapp:
-## Start a virtual environment
-python3 -m venv venv
-source venv/bin/activate
-
-## Start the backend
-cd Analysis-Tool
-pip install -r requirements.txt
-uvicorn api:app --reload
-
-#Frontend (from Log-Analysis-Webapp/)
-cd ../Log-Analysis-Webapp 
-npm install
-npm run dev
-
 # React + TypeScript + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
