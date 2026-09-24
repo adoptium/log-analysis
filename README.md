@@ -21,7 +21,7 @@ part.
 
 ---
 
-## How to run the webapp:
+## How to run the webapp
 ### Start a virtual environment
 python3 -m venv venv
 source venv/bin/activate
@@ -31,7 +31,7 @@ cd Analysis-Tool
 pip install -r requirements.txt
 uvicorn api:app --reload
 
-#Frontend (from Log-Analysis-Webapp/)
+### Frontend
 cd ../Log-Analysis-Webapp 
 npm install
 npm run dev
