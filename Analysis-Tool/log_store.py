@@ -258,6 +258,21 @@ class EventStore:
             }
             for r in rows
         ]
+        
+    # ── saved-analysis access (by source_file key) ───────────────────────────
+    def load_events(self, name: str) -> list[dict]:
+        """Every event stored under `name` (the source_file key), in the
+        standard JSON-ready shape. Returns [] if nothing matches (the API turns
+        that into a 404)."""
+        return self._events("WHERE source_file = ?", [name])
+
+    def delete_analysis(self, name: str) -> int:
+        """Remove every event stored under `name`. Idempotent: returns rows deleted."""
+        n = self.con.execute(
+            "SELECT COUNT(*) FROM events WHERE source_file = ?", [name]
+        ).fetchone()[0]
+        self.con.execute("DELETE FROM events WHERE source_file = ?", [name])
+        return n
 
     # ── overview queries ─────────────────────────────────────────────────────
 

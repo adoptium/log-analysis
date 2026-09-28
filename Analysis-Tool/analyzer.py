@@ -407,10 +407,10 @@ def to_json(events: list[LogEvent], indent: int = 2) -> str:
 
 if __name__ == "__main__":
     import sys
-    input_path=Path.cwd()/Path("sample-logs","jenkins","jenkins.log.24052026")
+    input_path = Path.cwd() / Path("sample-logs", "var", "log", "jenkins", "jenkins.log.24052026")
     evs = analyze(sys.argv[1] if len(sys.argv) > 1 else input_path)
     print(f"parsed {len(evs)} events\n")
     print("level counts:", level_counts(evs))
     top_templates(evs, 12)
     fatal_events(evs)
-    sys_correspond("2026-05-24 02:01:13.671000+00:00", Path("sample-logs","systems","syslog.1"),timedelta(seconds=313))
+    sys_correspond("2026-05-24 02:01:13.671000+00:00", Path("sample-logs", "var", "log", "syslog.1"), timedelta(seconds=313))

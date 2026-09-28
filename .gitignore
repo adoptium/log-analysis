@@ -2,7 +2,11 @@ sample-logs/
 analyzer_output/
 duckdb_output/
 *.duckdb
+*.duckdb.wal
 .DS_Store
 *.bin
 __pycache__/
 *.pyc
+.bob/
+.venv/
+.claude/

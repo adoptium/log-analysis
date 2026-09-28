@@ -1,0 +1,85 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+@import "tailwindcss";
+
+:root {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color: #1c1917;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: #f7f7f6;
+  min-height: 100vh;
+}
+
+/* Scrollbars */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.2); border-radius: 4px; }
+
+/* ─────────────────────────────────────────────────────────────
+   Hover states — inline styles can't express :hover, so the
+   handful the design calls for live here as utility classes.
+   ───────────────────────────────────────────────────────────── */
+.ll-link { color: #4f46e5; text-decoration: none; }
+.ll-link:hover { color: #4338ca; }
+
+.ll-row:hover { background: #f7f7f6; }
+.ll-btn-secondary:hover { background: #f5f5f4; }
+.ll-icon-btn:hover { background: #f5f5f4; }
+.ll-tab:hover { color: #1c1917; }
+.ll-clickable { cursor: pointer; }
+
+/* ─────────────────────────────────────────────────────────────
+   Responsive layout — the design ships as a fixed 1680px canvas;
+   here the same grids collapse gracefully on narrower screens.
+   ───────────────────────────────────────────────────────────── */
+.ll-severity-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+@media (max-width: 900px) {
+  .ll-severity-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+.ll-dash-body {
+  display: grid;
+  /* minmax(0, …) lets the feed column shrink so long messages ellipsis
+     instead of blowing out the grid and forcing a horizontal scroll. */
+  grid-template-columns: minmax(0, 1fr) 420px;
+}
+@media (max-width: 1100px) {
+  .ll-dash-body { grid-template-columns: minmax(0, 1fr); }
+  .ll-dash-body > div:first-child { border-right: none !important; }
+}
+
+.ll-rules-body {
+  display: grid;
+  grid-template-columns: 1fr 360px;
+  min-height: 600px;
+}
+@media (max-width: 1100px) {
+  .ll-rules-body { grid-template-columns: 1fr; min-height: 0; }
+  .ll-rules-body > div:first-child { border-right: none !important; }
+}
+
+/* Investigate: filter rail · event feed · side stats. minmax(0, …) lets
+   the feed column shrink so long messages ellipsis instead of scrolling. */
+.ll-investigate-body {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr) 300px;
+  min-height: 640px;
+}
+@media (max-width: 1100px) {
+  .ll-investigate-body { grid-template-columns: minmax(0, 1fr); min-height: 0; }
+  .ll-investigate-body > div { border-right: none !important; }
+}
+
+/* Volume-chart bars brighten on hover regardless of selection dimming. */
+.ll-bar { transition: opacity 0.1s ease; }
+.ll-bar:hover { opacity: 1 !important; }
